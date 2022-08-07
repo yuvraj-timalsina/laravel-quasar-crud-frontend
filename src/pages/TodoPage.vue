@@ -90,35 +90,35 @@
               label="Description"
               type="textarea"
             />
+            <div class="q-mt-md">
+              <q-btn
+                v-if="todoForm.id"
+                class="full-width"
+                color="primary"
+                label="Update"
+                @click="todoUpdate(todoForm.id)"
+              />
+              <q-btn
+                v-else
+                class="full-width"
+                color="primary"
+                label="Save"
+                @click="todoSave"
+              />
+            </div>
           </q-card-section>
-          <q-btn
-            v-if="todoForm.id"
-            class="full-width"
-            color="primary"
-            label="Update"
-            @click="todoUpdate"
-          />
-          <q-btn
-            v-else
-            class="full-width"
-            color="primary"
-            label="Save"
-            @click="todoSave"
-          />
         </q-card>
       </q-dialog>
     </div>
   </q-page>
 </template>
-
 <script setup>
-
-import { onMounted, ref } from 'vue'
 import { api } from 'boot/axios'
+import { onMounted, ref } from 'vue'
 
-const showDialog = ref(false)
-const loading = ref(true)
 const rows = ref()
+const loading = ref(true)
+const showDialog = ref(false)
 
 /** get todos */
 onMounted(() => {
@@ -127,18 +127,18 @@ onMounted(() => {
 
 function todoGet () {
   api.get('todos')
-    .then(response => {
-      rows.value = response.data.data
+    .then(res => {
+      rows.value = res.data.data
     })
-    .catch(error => {
-      console.log(error)
+    .catch(err => {
+      console.log(err)
     })
     .finally(() => {
       loading.value = false
     })
 }
 
-/** todo form */
+/** todo form dialog */
 const todoForm = ref({
   title: '',
   description: ''
@@ -150,11 +150,23 @@ async function todoSave () {
     title: todoForm.value.title,
     description: todoForm.value.description
   })
-    .catch(error => {
-      console.log(error)
+    .catch(err => {
+      console.log(err)
     })
   todoGet()
   showDialog.value = false
+}
+
+/** update todo */
+const todoUpdate = (id) => {
+  api.put('/todos/' + id, {
+    title: todoForm.value.title,
+    description: todoForm.value.description
+  }).then(res => {
+    todoGet()
+    showDialog.value = false
+    console.log('Todo Updated!')
+  })
 }
 
 /** delete todo */
@@ -172,13 +184,7 @@ const todoEdit = (id) => {
     todoForm.value = res.data.data
   })
 }
-/** update todo */
-const todoUpdate = (id) => {
-  api.put('/todos/' + id).then(res => {
-    todoGet()
-    console.log('Todo Updated!')
-  })
-}
+/** dialog todo */
 const todoDialog = () => {
   todoForm.value = {}
   showDialog.value = true
