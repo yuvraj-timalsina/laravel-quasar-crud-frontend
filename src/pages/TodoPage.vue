@@ -6,7 +6,7 @@
         :columns="columns"
         :loading="loading"
         :rows="rows"
-        row-key="name"
+        row-key="id"
         title="Todo"
       >
         <template #top>
@@ -14,11 +14,17 @@
             color="primary"
             icon="add"
             round
-            @click="showDialog=true"
+            @click="todoDialog"
           />
         </template>
         <template #body="props">
           <q-tr :props="props">
+            <q-td
+              key="id"
+              :props="props"
+            >
+              {{ props.row.id }}
+            </q-td>
             <q-td
               key="title"
               :props="props"
@@ -40,7 +46,7 @@
                 icon="delete_outline"
                 name="delete"
                 round
-                @click="confirmDelete(props.row.id)"
+                @click="todoDelete(props.row.id)"
               />
               <q-btn
                 class="text-primary"
@@ -61,7 +67,7 @@
           style="width: 37.5rem;"
         >
           <q-toolbar>
-            <q-toolbar-title>Create Todo</q-toolbar-title>
+            <q-toolbar-title>{{ !todoForm.id ? 'Create Todo' : 'Edit Todo' }}</q-toolbar-title>
             <q-btn
               v-close-popup
               flat
@@ -72,25 +78,32 @@
           </q-toolbar>
           <q-card-section>
             <q-input
-              v-model="createTodoForm.title"
+              v-model="todoForm.title"
               class="q-mb-md"
               filled
               label="Title"
               type="text"
             />
             <q-input
-              v-model="createTodoForm.description"
+              v-model="todoForm.description"
               filled
               label="Description"
               type="textarea"
             />
           </q-card-section>
-
           <q-btn
+            v-if="todoForm.id"
+            class="full-width"
+            color="primary"
+            label="Update"
+            @click="todoUpdate"
+          />
+          <q-btn
+            v-else
             class="full-width"
             color="primary"
             label="Save"
-            @click="saveTodo"
+            @click="todoSave"
           />
         </q-card>
       </q-dialog>
@@ -106,9 +119,13 @@ import { api } from 'boot/axios'
 const showDialog = ref(false)
 const loading = ref(true)
 const rows = ref()
-const editTodoData = ref([])
 
+/** get todos */
 onMounted(() => {
+  todoGet()
+})
+
+function todoGet () {
   api.get('todos')
     .then(response => {
       rows.value = response.data.data
@@ -119,38 +136,63 @@ onMounted(() => {
     .finally(() => {
       loading.value = false
     })
-})
+}
 
-const createTodoForm = ref({
+/** todo form */
+const todoForm = ref({
   title: '',
   description: ''
 })
 
-async function saveTodo () {
+/** save todo form data */
+async function todoSave () {
   await api.post('todos', {
-    title: createTodoForm.value.title,
-    description: createTodoForm.value.description
+    title: todoForm.value.title,
+    description: todoForm.value.description
   })
     .catch(error => {
       console.log(error)
     })
+  todoGet()
   showDialog.value = false
 }
 
-const confirmDelete = (id) => {
+/** delete todo */
+const todoDelete = (id) => {
   api.delete('/todos/' + id).then(res => {
+    todoGet()
     console.log('Todo Deleted!')
   })
 }
 
+/** edit todo */
 const todoEdit = (id) => {
   api.get('/todos/' + id).then(res => {
     showDialog.value = true
-    editTodoData.value = res.data.data
+    todoForm.value = res.data.data
   })
 }
-
+/** update todo */
+const todoUpdate = (id) => {
+  api.put('/todos/' + id).then(res => {
+    todoGet()
+    console.log('Todo Updated!')
+  })
+}
+const todoDialog = () => {
+  todoForm.value = {}
+  showDialog.value = true
+}
+/** q-table */
 const columns = [
+  {
+    name: 'id',
+    required: true,
+    label: 'ID',
+    align: 'left',
+    field: row => row.id,
+    sortable: true
+  },
   {
     name: 'title',
     required: true,
@@ -168,7 +210,7 @@ const columns = [
   },
   {
     name: 'actions',
-    align: 'left',
+    align: 'center',
     label: 'Actions',
     field: 'actions',
     sortable: true
