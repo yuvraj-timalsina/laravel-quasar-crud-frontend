@@ -23,7 +23,7 @@
               key="id"
               :props="props"
             >
-              {{ props.row.id }}
+              {{ props.row.index }}
             </q-td>
             <q-td
               key="title"
@@ -84,26 +84,20 @@
               label="Title"
               type="text"
             />
+
             <q-input
               v-model="todoForm.description"
+              class="text-negative"
               filled
               label="Description"
               type="textarea"
             />
             <div class="q-mt-md">
               <q-btn
-                v-if="todoForm.id"
+                :label="!todoForm.id ? 'Save':'Update'"
                 class="full-width"
                 color="primary"
-                label="Update"
-                @click="todoUpdate(todoForm.id)"
-              />
-              <q-btn
-                v-else
-                class="full-width"
-                color="primary"
-                label="Save"
-                @click="todoSave"
+                @click="!todoForm.id ? todoSave() : todoUpdate(todoForm.id)"
               />
             </div>
           </q-card-section>
@@ -115,11 +109,12 @@
 <script setup>
 import { api } from 'boot/axios'
 import { onMounted, ref } from 'vue'
+import { useQuasar } from 'quasar'
 
 const rows = ref()
 const loading = ref(true)
 const showDialog = ref(false)
-
+const $q = useQuasar()
 /** get todos */
 onMounted(() => {
   todoGet()
@@ -129,6 +124,9 @@ function todoGet () {
   api.get('todos')
     .then(res => {
       rows.value = res.data.data
+      rows.value.forEach((val, index) => {
+        val.index = index + 1
+      })
     })
     .catch(err => {
       console.log(err)
@@ -143,6 +141,11 @@ const todoForm = ref({
   title: '',
   description: ''
 })
+/** dialog todo */
+const todoDialog = () => {
+  todoForm.value = {}
+  showDialog.value = true
+}
 
 /** save todo form data */
 async function todoSave () {
@@ -150,11 +153,21 @@ async function todoSave () {
     title: todoForm.value.title,
     description: todoForm.value.description
   })
+    .then(res => {
+      if (res.status === 201) {
+        showDialog.value = false
+      }
+    })
     .catch(err => {
       console.log(err)
     })
+  $q.notify({
+    message: 'Todo Created!',
+    position: 'top',
+    icon: 'thumb_up',
+    color: 'positive'
+  })
   todoGet()
-  showDialog.value = false
 }
 
 /** update todo */
@@ -167,6 +180,12 @@ const todoUpdate = (id) => {
     showDialog.value = false
     console.log('Todo Updated!')
   })
+  $q.notify({
+    message: 'Todo Updated!',
+    position: 'top',
+    icon: 'tag_faces',
+    color: 'info'
+  })
 }
 
 /** delete todo */
@@ -174,6 +193,12 @@ const todoDelete = (id) => {
   api.delete('/todos/' + id).then(res => {
     todoGet()
     console.log('Todo Deleted!')
+  })
+  $q.notify({
+    message: 'Todo Deleted!',
+    position: 'top',
+    icon: 'thumb_down',
+    color: 'negative'
   })
 }
 
@@ -184,11 +209,7 @@ const todoEdit = (id) => {
     todoForm.value = res.data.data
   })
 }
-/** dialog todo */
-const todoDialog = () => {
-  todoForm.value = {}
-  showDialog.value = true
-}
+
 /** q-table */
 const columns = [
   {
@@ -196,7 +217,7 @@ const columns = [
     required: true,
     label: 'ID',
     align: 'left',
-    field: row => row.id,
+    field: row => row.index,
     sortable: true
   },
   {
